@@ -1,0 +1,67 @@
+/* Incoming Call Toast Styles */
+.incoming-call-toast {
+  background: transparent !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 12px !important;
+  padding: 0 !important;
+  min-width: 320px !important;
+}
+
+.incoming-call-toast .Toastify__toast-body {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.incoming-call-toast .Toastify__progress-bar {
+  background: linear-gradient(90deg, #ef4444, #dc2626) !important;
+  height: 3px !important;
+}
+
+/* Animation for incoming call */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+.call-avatar-ring::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: pulse-ring 1.5s infinite;
+}
+
+/* Custom scrollbar for better UI */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Calling screen animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
