@@ -251,8 +251,12 @@ const SocialPost = ({
     src={postVideoSrc}
     controls
     className="w-full max-h-96 object-cover rounded-lg"
-  />
-) : []}
+    preload="metadata"
+    style={{ maxHeight: '400px' }}
+  >
+    Your browser does not support the video tag.
+  </video>
+) : null}
 
 
       {caption && (

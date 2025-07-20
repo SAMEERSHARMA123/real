@@ -1,4 +1,5 @@
 import React from "react";
+import { formatDuration } from "../../utils/formatters";
 
 export default function ShortsGrid({ shortsVideos }) {
   return (
@@ -13,7 +14,7 @@ export default function ShortsGrid({ shortsVideos }) {
                 <path d="M8 5v14l11-7z"/>
               </svg>
               <span className="text-white text-[8px] xs:text-[10px] sm:text-xs font-medium">
-                {Math.floor(Math.random() * 2 + 1)}:{Math.floor(Math.random() * 59).toString().padStart(2, '0')}
+                {formatDuration(video.duration)}
               </span>
             </div>
           </div>

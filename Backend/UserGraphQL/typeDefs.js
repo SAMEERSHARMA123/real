@@ -2,8 +2,6 @@ const { gql } = require("apollo-server-express");
 
 const typeDefs = gql`
 
-  scalar Upload
-
   type User {
     id: ID!
     name: String!
@@ -20,6 +18,7 @@ const typeDefs = gql`
     followers: [User]           # Suggestion System Support
     following: [User]           # Suggestion System Support
     posts: [Post]               # Added to support searchUsers query
+    videos: [Video]             # User's videos
   }
 
   type OtpResponse {
@@ -32,8 +31,10 @@ const typeDefs = gql`
     id: ID!
     caption: String
     imageUrl: String
-     videoUrl: String
-    createdBy: ID
+    videoUrl: String
+    thumbnailUrl: String
+    isVideo: Boolean
+    createdBy: User
     createdAt: String
     likes: [Like]
     comments: [Comment]
@@ -51,11 +52,13 @@ const typeDefs = gql`
     commentedAt: String
   }
 
+
+
   type Query {
     users: [User]
     getMe(userId: ID!) : User
     getAllPosts(userId : ID!): [Post]
-     searchUsers(username: String!): [User]
+    searchUsers(username: String!): [User]
     suggestedUsers(userId: ID!): [User]
   }
 
@@ -80,7 +83,7 @@ const typeDefs = gql`
       newPassword: String!
     ): String
 
-    createPost(id: ID, caption: String!, image: Upload, video: Upload): Post
+    createPost(id: ID, caption: String!, image: Upload, video: Upload, thumbnail: Upload): Post
     DeletePost(id: ID!) : String!
     LikePost(userId: ID!,postId: ID!) : String!
     CommentPost(userId: ID!,postId: ID!, text:String!):[Comment]!

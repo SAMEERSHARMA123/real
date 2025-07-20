@@ -72,6 +72,13 @@ const userSchema = new mongoose.Schema({
     },
   ],
 
+  videos: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Video",
+    },
+  ],
+
   bookmarks: [
     {
       type: mongoose.Schema.Types.ObjectId,

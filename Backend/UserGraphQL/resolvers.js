@@ -6,6 +6,7 @@ require('dotenv').config();
 
 const { GraphQLUpload } = require('graphql-upload');
 const Post = require('../Models/Post');
+const Video = require('../Models/Video');
 const { uploadToCloudinary } = require('../Utils/cloudinary');
 
 const otpStore = {};
@@ -42,19 +43,27 @@ const resolvers = {
       },
   
    getAllPosts: async (_, { userId }) => {
-  return await Post.find({ createdBy: userId })
-    .sort({ createdAt: -1 })
-    .populate("likes.user", "id name username profileImage")
-    .populate("comments.user", "id name username profileImage");
+  try {
+    // ✅ Get only posts (not videos from Video schema)
+    const posts = await Post.find()
+      .sort({ createdAt: -1 })
+      .populate("createdBy", "id name username profileImage")
+      .populate("likes.user", "id name username profileImage")
+      .populate("comments.user", "id name username profileImage");
+
+    // ✅ Add isVideo flag to posts based on whether they have videoUrl
+    const postsWithFlag = posts.map(post => ({
+      ...post._doc,
+      id: post._id,
+      isVideo: !!post.videoUrl // true if post has video, false otherwise
+    }));
+
+    return postsWithFlag;
+  } catch (error) {
+    console.error('getAllPosts error:', error);
+    throw new Error('Failed to fetch posts');
+  }
 },
-
-//     getAllPosts: async () => {
-//   return await Post.find()
-//     .sort({ createdAt: -1 })
-//     .populate("likes.user", "id name username profileImage")
-//     .populate("comments.user", "id name username profileImage");
-// },
-
 
     searchUsers: async (_, { username }) => {
       try {
@@ -268,31 +277,38 @@ const resolvers = {
       return 'Password updated successfully';
     },
 
-    // createPost: async (_, { id, caption, image, }) => {
-    //   const imageUrl = await uploadToCloudinary(image);
-    //   const safeCaption = typeof caption === 'undefined' || caption === null ? '' : caption;
-    //   const post = await Post.create({ caption: safeCaption, imageUrl, createdBy: id });
-    //   await User.findByIdAndUpdate(id, { $push: { posts: post._id } });
-    //   return post;
-    // },
-    createPost: async (_, { id, caption, image, video }) => {
+    createPost: async (_, { id, caption, image, video, thumbnail }) => {
       let imageUrl = null;
       let videoUrl = null;
+      let thumbnailUrl = null;
+      
       if (image) {
         imageUrl = await uploadToCloudinary(image, 'image');
       }
 
-    if (video) {
-    if (video.size > 50 * 1024 * 1024) {
-      throw new Error("Video should be under 50MB");
-    }
-    videoUrl = await uploadToCloudinary(video, 'video');
-  }
+      if (video) {
+        if (video.size > 100 * 1024 * 1024) {
+          throw new Error("Video should be under 100MB");
+        }
+        videoUrl = await uploadToCloudinary(video, 'video');
+      }
+
+      // Handle thumbnail for video posts
+      if (thumbnail) {
+        thumbnailUrl = await uploadToCloudinary(thumbnail, 'image');
+      }
 
       if (!imageUrl && !videoUrl) {
         throw new Error('Either image or video must be provided');
       }
-      const post = await Post.create({ caption, imageUrl, videoUrl, createdBy: id });
+      
+      const post = await Post.create({ 
+        caption, 
+        imageUrl, 
+        videoUrl, 
+        thumbnailUrl, 
+        createdBy: id 
+      });
       await User.findByIdAndUpdate(id, { $push: { posts: post._id } });
       return post;
     },
@@ -421,7 +437,7 @@ if (deletePost) {
       const user = await User.findById(id);
       if (!user) throw new Error("User not found");
       return user;
-    }
+    },
   },
 
   // ✅ NEWLY ADDED: Follower/Following Resolvers
@@ -472,6 +488,6 @@ if (deletePost) {
     },
     commentedAt: (parent) => parent.commentedAt,
   }
-};
+}
 
 module.exports = resolvers;

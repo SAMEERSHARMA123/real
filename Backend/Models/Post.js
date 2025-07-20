@@ -14,6 +14,9 @@ const postSchema = new mongoose.Schema({
     type: String,
    
   },
+  thumbnailUrl: {
+    type: String,
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -27,6 +30,8 @@ const postSchema = new mongoose.Schema({
   // ✅ Likes with timestamp
   likes: [
     {
+      _id: false, // Disable automatic _id generation for likes
+      _id: false, // Disable automatic _id generation for likes
       user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       likedAt: { type: Date, default: Date.now },
     }

@@ -17,7 +17,7 @@ import VideoCall from './components/videocall/VideoCall'; // or actual path
 import CallUser from './components/videocall/CallUser';
 import ReceiveCall from './components/videocall/ReceiveCall';
 import IncomingCallNotification from './components/videocall/IncomingCallNotification';
-
+import Reel from './components/Reels/Reel';
 
 
 function App() {
@@ -42,6 +42,7 @@ function App() {
           <Route path="/profile/:userId" element={<ProfilePage />} />
           <Route path="/change" element={<Password_change />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/reels" element={<Reel />} />
 
           {/* ✅ New video call route */}
           {/* <Route path="/video/:roomID" element={<VideoCall/>} /> */}

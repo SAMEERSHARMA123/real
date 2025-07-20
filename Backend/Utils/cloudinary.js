@@ -98,7 +98,20 @@ const uploadToCloudinary = async (file, type = 'image') => {
             reject(err);
           } else {
             console.log('✅ Cloudinary Upload Success:', result.secure_url);
-            resolve(result.secure_url);
+            
+            // For videos, return metadata along with URL
+            if (type === 'video') {
+              resolve({
+                url: result.secure_url,
+                duration: result.duration || 0, // in seconds
+                width: result.width || 0,
+                height: result.height || 0,
+                bytes: result.bytes || buffer.length
+              });
+            } else {
+              // For images, just return URL
+              resolve(result.secure_url);
+            }
           }
         }
       );

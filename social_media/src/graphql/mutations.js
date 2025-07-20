@@ -1,12 +1,15 @@
+
 import { gql } from "@apollo/client";
 
 export const CREATE_POST = gql`
-  mutation($id: ID!,$caption: String!, $image: Upload, $video: Upload) {
-    createPost(id: $id,caption: $caption, image: $image, video: $video) {
+  mutation($id: ID!,$caption: String!, $image: Upload, $video: Upload, $thumbnail: Upload) {
+    createPost(id: $id,caption: $caption, image: $image, video: $video, thumbnail: $thumbnail) {
       id
       caption
       imageUrl
       videoUrl
+      thumbnailUrl
+      isVideo
       createdAt
     }
   }
@@ -20,7 +23,14 @@ export const GET_ALL_POSTS = gql`
       caption
       imageUrl
       videoUrl
-      createdBy
+      thumbnailUrl
+      isVideo
+      createdBy {
+        id
+        name
+        username
+        profileImage
+      }
       createdAt
       likes {
         user {
@@ -225,6 +235,203 @@ export const COMMENT_POST = gql`
         username
         profileImage
       }
+    }
+  }
+`;
+
+// Video Upload Mutations
+export const UPLOAD_VIDEO = gql`
+  mutation UploadVideo(
+    $title: String!
+    $description: String
+    $video: Upload!
+    $thumbnail: Upload
+    $tags: [String]
+    $category: String
+    $isPublic: Boolean
+    $resolution: VideoResolutionInput
+  ) {
+    uploadVideo(
+      title: $title
+      description: $description
+      video: $video
+      thumbnail: $thumbnail
+      tags: $tags
+      category: $category
+      isPublic: $isPublic
+      resolution: $resolution
+    ) {
+      id
+      title
+      description
+      videoUrl
+      thumbnailUrl
+      duration
+      views
+      createdBy {
+        id
+        name
+        username
+        profileImage
+      }
+      createdAt
+      updatedAt
+      likes {
+        user {
+          id
+        }
+        likedAt
+      }
+      comments {
+        id
+        text
+        user {
+          id
+          name
+          username
+        }
+        commentedAt
+      }
+      tags
+      category
+      isPublic
+      fileSize
+      resolution {
+        width
+        height
+      }
+    }
+  }
+`;
+
+export const GET_ALL_VIDEOS = gql`
+  query GetAllVideos {
+    getAllVideos {
+      id
+      title
+      description
+      videoUrl
+      thumbnailUrl
+      duration
+      views
+      createdBy {
+        id
+        name
+        username
+        profileImage
+      }
+      createdAt
+      updatedAt
+      likes {
+        user {
+          id
+        }
+        likedAt
+      }
+      comments {
+        id
+        text
+        user {
+          id
+          name
+          username
+        }
+        commentedAt
+      }
+      tags
+      category
+      isPublic
+      fileSize
+      resolution {
+        width
+        height
+      }
+    }
+  }
+`;
+
+export const GET_USER_VIDEOS = gql`
+  query GetUserVideos($userId: ID!) {
+    getUserVideos(userId: $userId) {
+      id
+      title
+      description
+      videoUrl
+      thumbnailUrl
+      duration
+      views
+      createdBy {
+        id
+        name
+        username
+        profileImage
+      }
+      createdAt
+      updatedAt
+      likes {
+        user {
+          id
+        }
+        likedAt
+      }
+      comments {
+        id
+        text
+        user {
+          id
+          name
+          username
+        }
+        commentedAt
+      }
+      tags
+      category
+      isPublic
+      fileSize
+      resolution {
+        width
+        height
+      }
+    }
+  }
+`;
+
+export const LIKE_VIDEO = gql`
+  mutation LikeVideo($videoId: ID!) {
+    likeVideo(videoId: $videoId)
+  }
+`;
+
+export const COMMENT_ON_VIDEO = gql`
+  mutation CommentOnVideo($videoId: ID!, $text: String!) {
+    commentOnVideo(videoId: $videoId, text: $text) {
+      id
+      text
+      user {
+        id
+        name
+        username
+        profileImage
+      }
+      commentedAt
+    }
+  }
+`;
+
+export const INCREMENT_VIDEO_VIEWS = gql`
+  mutation IncrementVideoViews($videoId: ID!) {
+    incrementVideoViews(videoId: $videoId) {
+      id
+      views
+    }
+  }
+`;
+
+export const TRACK_VIDEO_VIEW = gql`
+  mutation TrackVideoView($videoId: ID!) {
+    trackVideoView(videoId: $videoId) {
+      id
+      views
     }
   }
 `;

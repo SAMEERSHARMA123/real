@@ -16,14 +16,26 @@ const userTypeDefs = require('./UserGraphQL/typeDefs');
 const userResolvers = require('./UserGraphQL/resolvers');
 const chatTypeDefs = require('./ChatGraphQL/typeDefs');
 const chatResolvers = require('./ChatGraphQL/resolvers');
+const videoTypeDefs = require('./VideoGraphQL/typeDefs');
+const videoResolvers = require('./VideoGraphQL/resolvers');
 
 // Connect DB
 DB();
 
 const app = express();
+
+// ✅ Increase Express JSON body limit for large uploads
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
+
 app.use(cookieParser());
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
-app.use(graphqlUploadExpress({ maxFileSize: 50*1024*1024 , maxFiles: 1 }));
+
+// ✅ Increase GraphQL upload limits to 100MB
+app.use(graphqlUploadExpress({ 
+  maxFileSize: 100*1024*1024,  // 100MB limit
+  maxFiles: 2  // Allow video + thumbnail
+}));
 
 // Optional: GraphQL request logger
 app.use('/graphql', express.json(), (req, res, next) => {
@@ -335,8 +347,8 @@ socket.on("call-cancelled", ({ roomID }) => {
 // Start Apollo Server
 async function startServer() {
   const server = new ApolloServer({
-    typeDefs: [userTypeDefs, chatTypeDefs],
-    resolvers: [userResolvers, chatResolvers],
+    typeDefs: [userTypeDefs, chatTypeDefs, videoTypeDefs],
+    resolvers: [userResolvers, chatResolvers, videoResolvers],
     context: ({ req, res }) => {
       const token = req.cookies.token;
       const io = req.app.get("io");
@@ -349,6 +361,11 @@ async function startServer() {
       } catch (err) {
         return { req, res, io };
       }
+    },
+    // ✅ Increase Apollo Server upload limits
+    uploads: {
+      maxFileSize: 100 * 1024 * 1024, // 100MB
+      maxFiles: 2
     },
   });
 

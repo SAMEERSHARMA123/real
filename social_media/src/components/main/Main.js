@@ -136,6 +136,7 @@ const Main = () => {
   // Fetch posts from backend
 const { data, loading, error, refetch } = useQuery(GET_ALL_POSTS, {
   variables: { userId: tokens?.id },
+  skip: !tokens?.id, // Skip query until tokens are loaded
 });  
 
   useEffect(() => {
@@ -204,7 +205,7 @@ const { data, loading, error, refetch } = useQuery(GET_ALL_POSTS, {
           {/* Posts */}
           <div className="space-y-4">
             {loading && <div>Loading...</div>}
-            {error && <div>Error loading posts</div>}
+            {error && tokens?.id && <div>Error loading posts</div>}
             {allPosts && allPosts.map((post) => (
               <SocialPost
                 key={post.id}

@@ -1,12 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FaTimes, FaVolumeUp, FaVolumeMute, FaPhotoVideo, FaPlayCircle, FaPauseCircle } from "react-icons/fa";
 import { useMutation } from "@apollo/client";
-import { CREATE_POST, GET_ALL_POSTS } from "../../graphql/mutations";
+import { UPLOAD_VIDEO, CREATE_POST, GET_ALL_VIDEOS, GET_ALL_POSTS } from "../../graphql/mutations";
 import { GetTokenFromCookie } from '../getToken/GetToken';
 
 const VideoUpload = ({ show, onClose, onSuccess }) => {
-  const [caption, setCaption] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [video, setVideo] = useState(null);
+  const [thumbnail, setThumbnail] = useState(null);
+  const [tags, setTags] = useState("");
+  const [category, setCategory] = useState("general");
+  const [isPublic, setIsPublic] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [coverTime, setCoverTime] = useState(0);
   const [coverImage, setCoverImage] = useState(null);
@@ -15,10 +20,18 @@ const VideoUpload = ({ show, onClose, onSuccess }) => {
   const videoRef = useRef();
   const hiddenVideoRef = useRef();
   const [videoUrl, setVideoUrl] = useState(null);
-  const [createPost] = useMutation(CREATE_POST, {
-    refetchQueries: [{ query: GET_ALL_POSTS }],
-  });
   const user = GetTokenFromCookie();
+  const [uploadVideo] = useMutation(UPLOAD_VIDEO, {
+    refetchQueries: [
+      { query: GET_ALL_VIDEOS },
+      { query: GET_ALL_POSTS, variables: { userId: user?.id } }
+    ],
+  });
+  const [createPost] = useMutation(CREATE_POST, {
+    refetchQueries: [
+      { query: GET_ALL_POSTS, variables: { userId: user?.id } }
+    ],
+  });
   const debounceRef = useRef();
   const coverInputRef = useRef();
   const isCancelled = useRef(false);
@@ -27,24 +40,38 @@ const VideoUpload = ({ show, onClose, onSuccess }) => {
   const handleVideoFileChange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  
+  // ✅ Check file type
   if (!file.type.startsWith('video/')) {
-    alert('Only video files are allowed');
+    alert('❌ Only video files are allowed');
     setVideo(null);
     return;
   }
+  
+  // ✅ Check file size (100MB limit)
+  const maxSize = 100 * 1024 * 1024; // 100MB
+  if (file.size > maxSize) {
+    alert(`❌ Video file is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed size is 100MB.`);
+    setVideo(null);
+    return;
+  }
+  
   const videoElement = document.createElement('video');
   videoElement.preload = 'metadata';
   videoElement.onloadedmetadata = () => {
       window.URL.revokeObjectURL(videoElement.src);
     const duration = videoElement.duration;
-    if (duration > 60) {
-      alert('⚠️ Video should not be longer than 60 seconds.');
-      setVideo(null);
+    setVideo(file);
+    setVideoDuration(duration);
+    setCoverTime(0);
+    setCoverImage(null);
+    console.log(`✅ Video selected: ${file.name} (${(file.size / (1024 * 1024)).toFixed(1)}MB, ${duration.toFixed(1)}s)`);
+    
+    // Show message based on duration
+    if (duration <= 60) {
+      console.log('📹 Video will be uploaded to Videos section');
     } else {
-      setVideo(file);
-        setVideoDuration(duration);
-        setCoverTime(0);
-        setCoverImage(null);
+      console.log('📱 Video will be uploaded to Posts section');
     }
   };
   videoElement.onerror = () => {
@@ -71,11 +98,19 @@ const VideoUpload = ({ show, onClose, onSuccess }) => {
         canvas.height = videoEl.videoHeight;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-        setCoverImage(canvas.toDataURL('image/jpeg'));
+        
+        // Convert canvas to blob and create file for thumbnail
+        canvas.toBlob((blob) => {
+          const thumbnailFile = new File([blob], 'thumbnail.jpg', { type: 'image/jpeg' });
+          setThumbnail(thumbnailFile);
+          setCoverImage(canvas.toDataURL('image/jpeg'));
+        }, 'image/jpeg', 0.8);
+        
         URL.revokeObjectURL(videoURL);
       };
       videoEl.onerror = () => {
         setCoverImage(null);
+        setThumbnail(null);
         URL.revokeObjectURL(videoURL);
       };
     }, 150);
@@ -139,6 +174,7 @@ const VideoUpload = ({ show, onClose, onSuccess }) => {
   const handleCoverFileChange = (e) => {
     const file = e.target.files[0];
     if (file && file.type.startsWith('image/')) {
+      setThumbnail(file);
       const reader = new FileReader();
       reader.onload = (ev) => setCoverImage(ev.target.result);
       reader.readAsDataURL(file);
@@ -148,27 +184,74 @@ const VideoUpload = ({ show, onClose, onSuccess }) => {
   // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user?.id || !caption || !video) return;
+    if (!user?.id || !title || !video) return;
     setIsUploading(true);
     isCancelled.current = false;
     try {
-      await createPost({
-        variables: {
+      const tagsArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      
+      // Check video duration to decide which schema to use
+      if (videoDuration <= 60) {
+        // Upload to videos schema (60 seconds or less)
+        console.log('Uploading to Videos section with variables:', {
+          title,
+          description,
+          video: video?.name,
+          thumbnail: thumbnail?.name,
+          tags: tagsArray,
+          category,
+          isPublic
+        });
+        
+        await uploadVideo({
+          variables: {
+            title,
+            description,
+            video,
+            thumbnail,
+            tags: tagsArray,
+            category,
+            isPublic
+          },
+        });
+        console.log('✅ Video uploaded to Videos section');
+      } else {
+        // Upload to posts schema (more than 60 seconds)
+        console.log('Uploading to Posts section with variables:', {
           id: user.id,
-          caption,
-          image: null, // You can send coverImage if backend supports
-          video,
-        },
-      });
+          caption: `${title}\n${description}`,
+          video: video?.name
+        });
+        
+        await createPost({
+          variables: {
+            id: user.id,
+            caption: `${title}\n${description}`,
+            video: video,
+            thumbnail: thumbnail
+          },
+        });
+        console.log('✅ Video uploaded to Posts section');
+      }
+      
       if (isCancelled.current) return;
       setIsUploading(false);
-      setCaption("");
+      setTitle("");
+      setDescription("");
       setVideo(null);
+      setThumbnail(null);
+      setTags("");
       setCoverImage(null);
+      
+      // ✅ Trigger event to refresh posts in main feed
+      window.dispatchEvent(new Event("postUploaded"));
+      
       if (onSuccess) onSuccess();
       if (onClose) onClose();
     } catch (err) {
       setIsUploading(false);
+      console.error("Video upload error:", err);
+      console.error("Error details:", err.graphQLErrors || err.networkError || err.message);
       if (!isCancelled.current) alert("Upload failed ❌");
     }
   };
@@ -178,8 +261,11 @@ const VideoUpload = ({ show, onClose, onSuccess }) => {
     isCancelled.current = true;
     setIsUploading(false);
     setVideo(null);
+    setThumbnail(null);
     setCoverImage(null);
-    setCaption("");
+    setTitle("");
+    setDescription("");
+    setTags("");
   };
 
   if (!show) return null;
@@ -293,20 +379,68 @@ const VideoUpload = ({ show, onClose, onSuccess }) => {
                   </div>
                 </div>
               </div>
-              {/* Caption Input */}
+              {/* Video Details Form */}
               <form onSubmit={handleSubmit} className="flex flex-col gap-2 mt-4">
+                <input
+                  type="text"
+                  placeholder="Video title..."
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full p-2 rounded-xl border-2 border-purple-100 focus:border-purple-400 outline-none text-sm placeholder-gray-400 shadow-sm"
+                  required
+                />
                 <textarea
-                  placeholder="Write a caption..."
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="Video description..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   className="w-full p-2 rounded-xl border-2 border-purple-100 focus:border-purple-400 outline-none resize-none text-sm placeholder-gray-400 shadow-sm"
                   rows={2}
                 />
+                <input
+                  type="text"
+                  placeholder="Tags (comma separated)..."
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  className="w-full p-2 rounded-xl border-2 border-purple-100 focus:border-purple-400 outline-none text-sm placeholder-gray-400 shadow-sm"
+                />
+                <div className="flex gap-2">
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="flex-1 p-2 rounded-xl border-2 border-purple-100 focus:border-purple-400 outline-none text-sm shadow-sm"
+                  >
+                    <option value="general">General</option>
+                    <option value="entertainment">Entertainment</option>
+                    <option value="education">Education</option>
+                    <option value="music">Music</option>
+                    <option value="sports">Sports</option>
+                    <option value="gaming">Gaming</option>
+                    <option value="technology">Technology</option>
+                    <option value="lifestyle">Lifestyle</option>
+                  </select>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={isPublic}
+                      onChange={(e) => setIsPublic(e.target.checked)}
+                      className="accent-purple-500"
+                    />
+                    Public
+                  </label>
+                </div>
                 <div className="flex justify-end gap-2 mt-1">
                   {video && !isUploading && (
                     <button
                       type="button"
-                      onClick={() => { setVideo(null); setCoverImage(null); setCoverTime(0); setCaption(""); }}
+                      onClick={() => { 
+                        setVideo(null); 
+                        setThumbnail(null);
+                        setCoverImage(null); 
+                        setCoverTime(0); 
+                        setTitle(""); 
+                        setDescription("");
+                        setTags("");
+                      }}
                       className="bg-red-100 text-red-500 px-4 py-1 rounded-xl hover:bg-red-200 font-semibold shadow text-sm"
                     >
                       Remove
@@ -324,7 +458,7 @@ const VideoUpload = ({ show, onClose, onSuccess }) => {
           <button
             type="submit"
                     className="relative bg-purple-500 text-white px-6 py-1 rounded-xl font-bold shadow-md hover:bg-purple-600 disabled:opacity-60 disabled:cursor-not-allowed text-sm overflow-hidden"
-                    disabled={isUploading || !video || !caption}
+                    disabled={isUploading || !video || !title}
           >
             {isUploading && (
                     <span
